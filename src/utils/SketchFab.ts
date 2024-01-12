@@ -31,16 +31,15 @@ class SketchFab {
 
         console.log(uid);
         
-        fetch('https://api.sketchfab.com/v3/models/' + uid + '/download', options).then(function(response){
+        const DOWNLOAD_URL = `https://api.sketchfab.com/v3/models/${uid}/download`;
+        fetch(DOWNLOAD_URL, options)
+        .then(function(response){
             return response.json();
         }).then(function(data){
             console.log(data);
             const downloadURL: string = data.gltf.url;
             downloadArchive(downloadURL);
-        });
-
-
-
+        }).catch(e => console.log(e));
         return '';
     };
 
@@ -50,7 +49,7 @@ class SketchFab {
 };
 
 export function downloadArchive(url: string): void {
-    zip.workerScriptsPath = 'vendor/';
+    zip.workerScriptsPath = '/vendor/';
     var reader = new zip.HttpReader(url);
     zip.createReader(
         reader,
@@ -66,19 +65,53 @@ export function downloadArchive(url: string): void {
     );
 };
 
-export function ParseContent(entries: Array<any>): void {
+function reloadScene(entries: Array<any>, fileUrls: Object, sceneNumber: Number) {
+    let json = JSON.parse(fileUrls["scene.gltf"].data);
+    if (json.hasOwnProperty('buffers')) {
+        for (var j = 0; j < json.buffers.length; j++) {
+            json.buffers[j].uri = fileUrls[json.buffers[j].uri];
+        }
+    }
 
+    if (json.hasOwnProperty('images')) {
+        for (var j = 0; j < json.images.length; j++) {
+            json.images[j].uri = fileUrls[json.images[j].uri];
+        }
+    }
+    let updatedSceneFileContent = JSON.stringify(json, null, 2);
+    let updatedBlob = new Blob([updatedSceneFileContent], { type: 'text/plain' });
+    updatedUrl = window.URL.createObjectURL(updatedBlob);
+    const animations: Array<any> = json.animations;
+    animations.forEach((animation: any) => {
+        const animation_name: string = animation.name;
+        animationList.push(animation_name);
+    });
+
+    CreatePreview();
+
+
+}
+
+export function ParseContent(entries: Array<any>): void {
     updatedUrl = '';
     animationList = [];
     let content: any;
     let fileUrls: Object = {};
+    let item = 0;
+    let isProcessed = new Array(entries.length).fill(false);
     entries.forEach((entry: any, i: number) => {
-        entry.getData(new zip.BlobWriter('text/plain'), function onEnd(data) {
+        entry.getData(new zip.BlobWriter('text/plain'), async function onEnd(data) {
             var url = window.URL.createObjectURL(data);
             fileUrls[entry.filename] = url;
+            while (i !== item)
+                await new Promise((resolve, reject) => setTimeout(resolve, 1000))
+            item++;
+            isProcessed[i] = true;
         });
-        entry.getData(new zip.TextWriter('text/plain'), function onEnd(data) {
+        entry.getData(new zip.TextWriter('text/plain'), async function onEnd(data) {
             // Look at filename
+            while (!isProcessed[i])
+                await new Promise((resolve, reject) => setTimeout(resolve, 1000))
             const entryNames: Array<string> = entry.filename.split(".");
             const entryName: string = entryNames[entryNames.length - 1];
             if (entryName == "gltf") {
@@ -86,7 +119,7 @@ export function ParseContent(entries: Array<any>): void {
             }
 
             // Wait till all the entry data are read.
-            if (i === (entries.length - 1)) {
+            if (content && i === (entries.length - 1)) {
                 // console.log(content);
                 // console.log(fileUrls);
             
@@ -132,8 +165,6 @@ export function CreatePreview(): void {
         console.warn('Cannot find preview element when creating model preview.');
         return;
     }
-
-
     preModelEl.removeAttribute('gltf-model');
     preModelEl.removeObject3D('mesh');
     preModelEl.setAttribute('gltf-model', `url(${updatedUrl})`);

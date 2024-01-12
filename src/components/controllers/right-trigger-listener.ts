@@ -77,7 +77,7 @@ const rightTriggerListener = {
                 }
                 if (intersectedEl.parentNode && intersectedEl.parentNode.classList.contains('data-receiver')) {
                     fromEntity = intersectedEl.parentNode;
-                    fromProp = 'text';
+                    fromProp = "";
                 }
                 // Dot -> prompt -> bottle. For data sources such as bottles.
                 if (intersectedEl.parentNode.parentNode && intersectedEl.parentNode.parentNode.classList.contains('data-source')) {
@@ -189,7 +189,14 @@ const rightTriggerListener = {
             }
 
             // delete the line if connecting the same entity.
-            if (toEntity.getAttribute('id') === fromEntity.getAttribute('id')) {
+            
+            if (toEntity && fromEntity && toEntity.getAttribute('id') === fromEntity.getAttribute('id')) {
+                this.curEdgeEntity.parentNode.removeChild(this.curEdgeEntity);
+                this.curEdgeEntity = null;
+                return;
+            }
+
+            if (!toEntity || !toProp) {
                 this.curEdgeEntity.parentNode.removeChild(this.curEdgeEntity);
                 this.curEdgeEntity = null;
                 return;

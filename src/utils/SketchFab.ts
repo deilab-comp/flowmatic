@@ -14,9 +14,12 @@ let animationList: Array<string> = new Array<string>();
 
 class SketchFab {
     url: string = '';
-
+    private _faces: Map<string, string>;
+    private archivesMaxSize: number;
     constructor() {
-        this.url = 'https://api.sketchfab.com/v3/search';
+        this.url = 'https://api.sketchfab.com/'
+        this._faces = new Map();
+        this.faces = [0, 5000];
     };
 
     getGLTFUrl(uid: string): string {
@@ -31,7 +34,8 @@ class SketchFab {
 
         console.log(uid);
         
-        const DOWNLOAD_URL = `https://api.sketchfab.com/v3/models/${uid}/download`;
+        let url = new URL(`/v3/models/${uid}/download`, this.url);
+        const DOWNLOAD_URL = url.toString();
         fetch(DOWNLOAD_URL, options)
         .then(function(response){
             return response.json();
@@ -44,8 +48,22 @@ class SketchFab {
     };
 
     getUrl(): string {
-        return this.url;
+        let url = new URL("v3/search", this.url);
+        let urlSearch = new URLSearchParams({
+            type: "model",
+            max_face_count: this._faces.get("max"),
+        });
+        return new URL(`${url.origin}${url.pathname}?${urlSearch.toString()}`).toString();
     };
+
+    set faces(vals: [number, number]) {
+      let min, max;
+      if (vals[0] > vals[1])
+        [max, min] = vals;
+      else [min, max] = vals;
+      this._faces.set("min", min.toString());
+      this._faces.set("max", max.toString())
+    }
 };
 
 export function downloadArchive(url: string): void {
@@ -88,8 +106,6 @@ function reloadScene(entries: Array<any>, fileUrls: Object, sceneNumber: Number)
     });
 
     CreatePreview();
-
-
 }
 
 export function ParseContent(entries: Array<any>): void {

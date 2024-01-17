@@ -108,6 +108,14 @@ function reloadScene(entries: Array<any>, fileUrls: Object, sceneNumber: Number)
     CreatePreview();
 }
 
+function createSpinner() {
+  const text = document.createElement("a-text");
+  const preModelEl: any = document.getElementById('preview-model');
+  if (!preModelEl)  return;
+  text.setAttribute("value", "Loading...");
+  preModelEl.appendChild(text);
+}
+
 export function ParseContent(entries: Array<any>): void {
     updatedUrl = '';
     animationList = [];
@@ -115,24 +123,24 @@ export function ParseContent(entries: Array<any>): void {
     let fileUrls: Object = {};
     let item = 0;
     let isProcessed = new Array(entries.length).fill(false);
+    const sleep = t => new Promise((resolve, reject) => setTimeout(resolve, t));
+    const DEFAULT_SLEEP = 10;
+    createSpinner();
     entries.forEach((entry: any, i: number) => {
         entry.getData(new zip.BlobWriter('text/plain'), async function onEnd(data) {
             var url = window.URL.createObjectURL(data);
             fileUrls[entry.filename] = url;
-            while (i !== item)
-                await new Promise((resolve, reject) => setTimeout(resolve, 1000))
+            while (i !== item) await sleep(DEFAULT_SLEEP);
             item++;
             isProcessed[i] = true;
         });
         entry.getData(new zip.TextWriter('text/plain'), async function onEnd(data) {
             // Look at filename
-            while (!isProcessed[i])
-                await new Promise((resolve, reject) => setTimeout(resolve, 1000))
+            while (!isProcessed[i]) await sleep(DEFAULT_SLEEP);
             const entryNames: Array<string> = entry.filename.split(".");
             const entryName: string = entryNames[entryNames.length - 1];
-            if (entryName == "gltf") {
+            if (entryName == "gltf")
                 content = data;
-            }
 
             // Wait till all the entry data are read.
             if (content && i === (entries.length - 1)) {

@@ -67,6 +67,7 @@ class SketchFab {
 };
 
 export function downloadArchive(url: string): void {
+    createSpinner();
     zip.workerScriptsPath = '/vendor/';
     var reader = new zip.HttpReader(url);
     zip.createReader(
@@ -109,11 +110,18 @@ function reloadScene(entries: Array<any>, fileUrls: Object, sceneNumber: Number)
 }
 
 function createSpinner() {
-  const text = document.createElement("a-text");
   const preModelEl: any = document.getElementById('preview-model');
   if (!preModelEl)  return;
-  text.setAttribute("value", "Loading...");
-  preModelEl.appendChild(text);
+  let text = document.getElementById("loadingText");
+  if (text) (text as any).object3D.visible = true;
+  else {
+      text = document.createElement("a-text");
+      text.setAttribute("rotation", "-90 0 0")
+      text.setAttribute("value", "Loading...");
+      text.setAttribute("id", "loadingText");
+      text.setAttribute("width","1.5");
+      preModelEl.appendChild(text);
+  }
 }
 
 export function ParseContent(entries: Array<any>): void {
@@ -125,7 +133,6 @@ export function ParseContent(entries: Array<any>): void {
     let isProcessed = new Array(entries.length).fill(false);
     const sleep = t => new Promise((resolve, reject) => setTimeout(resolve, t));
     const DEFAULT_SLEEP = 10;
-    createSpinner();
     entries.forEach((entry: any, i: number) => {
         entry.getData(new zip.BlobWriter('text/plain'), async function onEnd(data) {
             var url = window.URL.createObjectURL(data);
@@ -146,7 +153,6 @@ export function ParseContent(entries: Array<any>): void {
             if (content && i === (entries.length - 1)) {
                 // console.log(content);
                 // console.log(fileUrls);
-            
                 var json = JSON.parse(content);
                 // Replace original buffers and images by blob URLs
                 if (json.hasOwnProperty('buffers')) {
@@ -154,7 +160,6 @@ export function ParseContent(entries: Array<any>): void {
                         json.buffers[j].uri = fileUrls[json.buffers[j].uri];
                     }
                 }
-                
                 if (json.hasOwnProperty('images')) {
                     for (var j = 0; j < json.images.length; j++) {
                         json.images[j].uri = fileUrls[json.images[j].uri];
@@ -180,11 +185,12 @@ export function ParseContent(entries: Array<any>): void {
             }
         });
     });
-    
 };
 
 export function CreatePreview(): void {
     const preModelEl: any = document.getElementById('preview-model');
+    let text = document.getElementById("loadingText") as any;
+    text.object3D.visible = false;
     if (!preModelEl) {
         console.warn('Cannot find preview element when creating model preview.');
         return;
